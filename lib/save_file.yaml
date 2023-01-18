@@ -1,15 +1,9 @@
 ---
-:name: b
-:tries: 8
-:word: translator
+:tries: 11
+:word: folks
 :blanks:
-- t
-- r
-- _
-- "n"
 - _
 - _
 - _
-- t
+- k
 - _
-- r

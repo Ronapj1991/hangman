@@ -44,9 +44,11 @@ module Display
     print "Enter your name: "
   end
 
-  def self.instructions
-    puts "You have 12 tries to guess the word"
+  def self.instructions(tries_num)
+    puts "You have #{tries_num} tries to guess the word"
     puts "If more than one letter is entered, only the first one will be recognized"
+    puts "To exit the game, press (Ctrl + C)"
+    puts "Goodluck!"
   end
 
   def self.lose
@@ -58,15 +60,22 @@ module Display
   end
 
   def self.save?
-    puts "Would you like to save your progress? 'Y' or 'N':"
+    puts "Would you like to save your progress?"
+  end
+
+  def self.load?
+    puts "You can load a progress from a previous save."
+    puts "Would you like to do that?"
+  end
+
+  def self.already_guessed
+    puts "That letter has been guessed. Try a different one"
   end
 end
 
 class Player
-  attr_reader :name
   attr_accessor :tries
-  def initialize(name)
-    @name = name
+  def initialize
     @tries = 12
   end
 
@@ -78,23 +87,21 @@ class Player
     guess_arr.join == word
   end
 
-  def save(current_word, blank_arr)
-    input = gets.chomp[0].downcase
-
-    until ["y","n"].include?(input)
-      puts '"y" or "n" only please'
-      input = gets.chomp[0].downcase
-    end
-    
-    if input == "y"
+  def save(answer, current_word, blank_arr)
+    if answer == "y"  
       File.open("save_file.yaml", "w") do |file|
         file.write YAML.dump({
-          :name => @name,
           :tries =>@tries,
           :word =>current_word,
           :blanks => blank_arr
         })
       end
+    end
+  end
+
+  def self.load_hash(answer)
+    if answer == "y"
+      data = YAML.load(File.read("save_file.yaml"))
     end
   end
 end
@@ -103,20 +110,45 @@ module GameLoop
   include Word
   include Display
 
-  word_in_play = Word.generate_word
-  blanks = Word.create_blanks(word_in_play)
+  Display.load?
+  load_answer = gets.chomp[0].downcase 
+  
+  until ["y","n"].include?(load_answer)
+    puts '"y" or "n" only please'
+    load_answer = gets.chomp[0].downcase
+  end
+  
+  load_game = Player.load_hash(load_answer)
+  
+
+  if load_answer == "y"  
+    word_in_play = load_game[:word]
+    blanks = load_game[:blanks]
+    player = Player.new()
+    player.tries = load_game[:tries]
+
+  else
+    word_in_play = Word.generate_word
+    blanks = Word.create_blanks(word_in_play)
+    player = Player.new()
+  end
+
   Display.welcome
-  player = Player.new(gets.chomp)
-  Display.instructions
+  Display.instructions(player.tries)
   
   Word.show_word(word_in_play)
+  print "\n#{blanks}\n"
 
-  player.tries.times do
+  while (player.tries > 0) do
     Display.before_guess
     guess_char = player.guess
     player.tries -= 1
 
-    if word_in_play.include?(guess_char)
+    if blanks.include?(guess_char)
+      Display.already_guessed
+      player.tries += 1
+    
+    elsif word_in_play.include?(guess_char)
       word_in_play.split("").each_with_index do |letter, idx|
         if letter == guess_char
           blanks[idx] = letter
@@ -126,12 +158,27 @@ module GameLoop
       print "\n#{blanks}\n"
       break if player.win?(blanks, word_in_play)
       Display.save?
-      player.save(word_in_play, blanks)
+      save_answer = gets.chomp[0].downcase
+      
+      until ["y","n"].include?(save_answer)
+        puts '"y" or "n" only please'
+        save_answer = gets.chomp[0].downcase
+      end
+      
+      player.save(save_answer, word_in_play, blanks)
+
     else
       Display.wrong_guess(player.tries)
       print "\n#{blanks}\n"
       Display.save?
-      player.save(word_in_play, blanks)
+      save_answer = gets.chomp[0].downcase
+      
+      until ["y","n"].include?(save_answer)
+        puts '"y" or "n" only please'
+        save_answer = gets.chomp[0].downcase
+      end
+      
+      player.save(save_answer, word_in_play, blanks)
     end
   end
 
