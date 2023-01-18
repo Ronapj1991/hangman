@@ -41,7 +41,6 @@ module Display
       Welcome to Hangman!
       The word to be guessed has been created...
     }
-    print "Enter your name: "
   end
 
   def self.instructions(tries_num)
@@ -136,7 +135,7 @@ module GameLoop
   Display.welcome
   Display.instructions(player.tries)
   
-  Word.show_word(word_in_play)
+  #Word.show_word(word_in_play)
   print "\n#{blanks}\n"
 
   while (player.tries > 0) do
