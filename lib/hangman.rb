@@ -1,3 +1,5 @@
+require 'yaml'
+
 module Word
   def self.generate_word
     file_of_words = File.open("google-10000-english-no-swears.txt", "r")
@@ -43,16 +45,20 @@ module Display
   end
 
   def self.instructions
-    puts "You have 8 tries to guess the word"
+    puts "You have 12 tries to guess the word"
     puts "If more than one letter is entered, only the first one will be recognized"
   end
 
   def self.lose
-    "You failed! Thanks for playing."
+    puts "You failed! Thanks for playing."
   end
 
   def self.win
-    "You Win! Congratulations!"
+    puts "You Win! Congratulations!"
+  end
+
+  def self.save?
+    puts "Would you like to save your progress? 'Y' or 'N':"
   end
 end
 
@@ -61,7 +67,7 @@ class Player
   attr_accessor :tries
   def initialize(name)
     @name = name
-    @tries = 8
+    @tries = 12
   end
 
   def guess
@@ -71,9 +77,29 @@ class Player
   def win?(guess_arr, word)
     guess_arr.join == word
   end
+
+  def save(current_word, blank_arr)
+    input = gets.chomp[0].downcase
+
+    until ["y","n"].include?(input)
+      puts '"y" or "n" only please'
+      input = gets.chomp[0].downcase
+    end
+    
+    if input == "y"
+      File.open("save_file.yaml", "w") do |file|
+        file.write YAML.dump({
+          :name => @name,
+          :tries =>@tries,
+          :word =>current_word,
+          :blanks => blank_arr
+        })
+      end
+    end
+  end
 end
 
-module Game
+module GameLoop
   include Word
   include Display
 
@@ -83,14 +109,12 @@ module Game
   player = Player.new(gets.chomp)
   Display.instructions
   
-  #Word.show_word(word_in_play)
-  
-  tries = player.tries
-  tries -= 1
+  Word.show_word(word_in_play)
 
   player.tries.times do
     Display.before_guess
     guess_char = player.guess
+    player.tries -= 1
 
     if word_in_play.include?(guess_char)
       word_in_play.split("").each_with_index do |letter, idx|
@@ -98,14 +122,16 @@ module Game
           blanks[idx] = letter
         end
       end
-      Display.correct_guess(tries)
+      Display.correct_guess(player.tries)
       print "\n#{blanks}\n"
-      tries -= 1
       break if player.win?(blanks, word_in_play)
+      Display.save?
+      player.save(word_in_play, blanks)
     else
-      Display.wrong_guess(tries)
+      Display.wrong_guess(player.tries)
       print "\n#{blanks}\n"
-      tries -= 1
+      Display.save?
+      player.save(word_in_play, blanks)
     end
   end
 
@@ -116,5 +142,4 @@ module Game
     Display.lose
     Word.show_word(word_in_play)
   end
-  
 end
